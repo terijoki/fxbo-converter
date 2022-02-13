@@ -45,6 +45,6 @@ class GetRatesToCache extends Command
 
         $this->ratesService->getRates();
 
-        $this->info('Rates have been successfully received from source');
+        $this->info('Rates have been successfully received from sources');
     }
 }
