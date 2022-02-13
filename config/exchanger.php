@@ -5,12 +5,12 @@ return [
     'base_currency' => 'EUR',
     'services' => [
         'ecb' => [
-            'class'    => \App\Services\EcbService::class,
+            'class'    => \App\Services\External\EcbService::class,
             'base_uri' => 'https://www.ecb.europa.eu/',
             'type'     => 'xml'
         ],
         'coindesk' => [
-            'class'    => \App\Services\CoindeskService::class,
+            'class'    => \App\Services\External\CoindeskService::class,
             'base_uri' => 'http://api.coindesk.com/',
             'type'     => 'xml'
         ],

@@ -3,9 +3,8 @@
 namespace App\Providers;
 
 use App\Contracts\ExchangerInterface;
-use App\Services\CoindeskService;
-use App\Services\EcbService;
-use App\Validations\ExchangerValidator;
+use App\Services\External\CoindeskService;
+use App\Services\External\EcbService;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider

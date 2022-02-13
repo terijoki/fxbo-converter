@@ -1,64 +1,73 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400"></a></p>
+# Конвертер валют на Laravel
 
-<p align="center">
-<a href="https://travis-ci.org/laravel/framework"><img src="https://travis-ci.org/laravel/framework.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+## Структура проекта
+Ниже кратко описана структура директорий
+```
+└── app/                  # основная папка с проектом
+    └── Console/          # папка с настройкой консольных команды
+        └── Commands/     # консольные команды
+    └── Contracts/        # папка с интерфейсами
+    └── Exceptions/       # папка с кастомными ошибками
+    └── Http/             # web папка
+        └── Controllers/  # файлы контроллеров
+        └── Middleware/   # файлы middleware
+    └── Models/           # папка с моделями (не содержит файлов)
+    └── Providers/        # сервис провайдеры
+    └── Rules/            # папка с кастомными валидаторами
+    └── Services/         # сервисный слой проекта
+        └── External/     # внешние сервисы
+    └── Validations/      # папка с сервисами валидации
+        └── DTOs/         # Data Transfer Objects
+└── bootstrap/            # системная папка для автозагрузки
+└── config/               # папка с основными конфигами проекта
+└── database/             # папка с общими моделями, помощниками и т.п. 
+    └── factories/        # папка с фабриками для быстрой генерации моделей
+    └── migrations/       # папка с миграциями
+    └── seeders/          # папка с фикстурами данных
+└── lang/                 # файлы локализации
+└── public/               # публичная папка (точка входа для web) 
+└── resources/            # рерурсный слой проекта
+    └── css/              # файлы стилей
+    └── js/               # javascript файлы
+    └── views/            # папка с представлениями проекта
+└── routes/               # роутинг проекта
+└── storage/              # хранилище данных фреймворка
+└── tests/                # папка с тестами 
+└── vendor/               # папка в внешними зависимостями
+├── .env.example          # пример конфигурационного файла
+├── .gitignore                
+├── docker-compose.yml    # конфигурация для docker-compose
+├── codeception.yml       # конфиг Codeception
+└── composer.json         # основные зависимости
+```
 
-## About Laravel
+## Разворачивание проекта
+* сделайте git clone
+* запустите сборку контейнеров проекта через docker-compose up -d
+После сборки можно выполнять команды как из среды контейнера через
+  docker exec -it {container_name} sh
+так и через интерактивную оболочку, например
+  docker exec {container_name} php artisan ide-helper:generate
+* выполните установку зависимостей через composer install
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Описание существующих консольных команд
+Пользователю доступны 2 команды:
+* php artisan rates:cache
+* php artisan currency:convert {amount} {from} {to}
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+Первая команда лишь выполняет поиск данных по источникам и записывает их в кэш. Эту команду удобно ставить на запуск, например ежедневно в 00:00, чтобы она парсила обновленные данные по валютам и в дальнейшем конвертеру не приходилось делать лишние запросы. Однако, по желанию кэш можно отключить через конфиг.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+Вторая команда выполняет непосредственно конвертацию. Необходимо передать 3 параметра: сумма, валюта, из которой конвертируем, а также валюта, в которую конвертируем данные. Допускается только передача данных о валюте в формате ISO 4217. Кроме того, доступны лишь те валюты, что есть в имеющихся источниках, однако список легко расширять, добавляя новые источники (см.ниже). Сумму допускается передавать только больше нуля с не более чем двумя цифрами после запятой. Результат выдается в форме 
+* ```{сумма} {валюта} = {результат} {валюта}```, 
+например 
+* ``` 1 BTC = 41234.5435 USD ```
 
-## Learning Laravel
+## Описание алгоритма работы конвертера
+* Первоначально, происходит валидация входных параметров, за это отвечает ExchangerValidator.php и встроенный валидатор Laravel. После, данные складываются в соответствующее DTO.
+* Далее, в работу включается сервис по запросу курсов валют RatesService.php. Его задача заключается в том, чтобы получить итоговый массив с курсами валют. Для этого он выполняет несколько задач. Первоначально, запрашивает данные из кэша и при наличии возвращает их, при отсутствии он запрашивает каждый сервис валют. После получения данных данные форматируются в единый вид.
+* Внешние сервисы выделены в отдельную папку и решают задачу получения данных от стороннего API и преобразования в единый формат. Задачи валидации и унификации формата данных решает ExchangerValidator.php. Сервисы способны принимать данные лишь 2-х типов: JSON и XML, в дальнейшем можно будет определить метод toArray для описания алгоритма получения массива данных. Добавление сервисов на данный момент осуществляется через конфигурационный файл (по-хорошему, можно обойтись без него, подключив рефлексию, но с точки зрения читабельности кода так лучше) и создание самого класса-сервиса.
+* Сервис конвертера валют решает базовую задачу по преобразованию валют. Принцип конвертации заклчается в том, что если в массиве курсов имеется возможность прямой конвертации сервис выполняет её, если такой возможности нет, то сервис приводит все валюты, не имеющей конвертации в базовой валюте (в данном случае, евро, но можно изменить через конфигурацию) к единому виду, чтобы иметь возможность через евро унифицировано произвести конвертацию. 
+* В конечном счете, полученное значение валидируется и выводится на экран
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 2000 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-## Laravel Sponsors
-
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
-
-### Premium Partners
-
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Cubet Techno Labs](https://cubettech.com)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[Many](https://www.many.co.uk)**
-- **[Webdock, Fast VPS Hosting](https://www.webdock.io/en)**
-- **[DevSquad](https://devsquad.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[OP.GG](https://op.gg)**
-- **[WebReinvent](https://webreinvent.com/?utm_source=laravel&utm_medium=github&utm_campaign=patreon-sponsors)**
-- **[Lendio](https://lendio.com)**
-
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## Автотестирование
+* в разработке

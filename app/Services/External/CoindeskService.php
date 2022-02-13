@@ -1,8 +1,9 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\External;
 
 use App\Contracts\ExchangerInterface;
+use App\Services\GuzzleService;
 use App\Validations\ExchangerValidator;
 use Illuminate\Support\Facades\Log;
 
