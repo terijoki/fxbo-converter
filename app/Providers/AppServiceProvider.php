@@ -23,7 +23,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register()
     {
-
+        $this->app
+            ->when(EcbService::class)
+            ->needs(ExchangerInterface::class);
+        $this->app
+            ->when(CoindeskService::class)
+            ->needs(ExchangerInterface::class);
     }
 
     /**
